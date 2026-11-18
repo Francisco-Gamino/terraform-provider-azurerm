@@ -1182,34 +1182,18 @@ func TestAccLinuxFunctionAppSlot_appStackDockerManagedServiceIdentity(t *testing
 	})
 }
 
-func TestAccLinuxFunctionAppSlot_appStackPowerShellCore(t *testing.T) {
+func TestAccLinuxFunctionAppSlot_appStackPowerShellCore76(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_linux_function_app_slot", "test")
 	r := LinuxFunctionAppSlotResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
-			Config: r.appStackPowerShellCore(data, SkuStandardPlan, "7"),
+			Config: r.appStackPowerShellCore(data, SkuStandardPlan, "7.6"),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("kind").HasValue("functionapp,linux"),
-				check.That(data.ResourceName).Key("site_config.0.linux_fx_version").HasValue("POWERSHELL|7"),
-			),
-		},
-		data.ImportStep("site_credential.0.password"),
-	})
-}
-
-func TestAccLinuxFunctionAppSlot_appStackPowerShellCore72(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_linux_function_app_slot", "test")
-	r := LinuxFunctionAppSlotResource{}
-
-	data.ResourceTest(t, r, []acceptance.TestStep{
-		{
-			Config: r.appStackPowerShellCore(data, SkuStandardPlan, "7.2"),
-			Check: acceptance.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).Key("kind").HasValue("functionapp,linux"),
-				check.That(data.ResourceName).Key("site_config.0.linux_fx_version").HasValue("POWERSHELL|7.2"),
+				check.That(data.ResourceName).Key("site_config.0.application_stack.0.powershell_core_version").HasValue("7.6"),
+				check.That(data.ResourceName).Key("site_config.0.linux_fx_version").HasValue("POWERSHELL|7.6"),
 			),
 		},
 		data.ImportStep("site_credential.0.password"),

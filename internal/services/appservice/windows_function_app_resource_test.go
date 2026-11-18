@@ -1467,54 +1467,6 @@ func TestAccWindowsFunctionApp_appStackJavaUpdate(t *testing.T) {
 	})
 }
 
-func TestAccWindowsFunctionApp_appStackPowerShellCore7(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_windows_function_app", "test")
-	r := WindowsFunctionAppResource{}
-
-	data.ResourceTest(t, r, []acceptance.TestStep{
-		{
-			Config: r.appStackPowerShellCore(data, SkuBasicPlan, "7"),
-			Check: acceptance.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).Key("kind").HasValue("functionapp"),
-			),
-		},
-		data.ImportStep("site_credential.0.password"),
-	})
-}
-
-func TestAccWindowsFunctionApp_appStackPowerShellCore72(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_windows_function_app", "test")
-	r := WindowsFunctionAppResource{}
-
-	data.ResourceTest(t, r, []acceptance.TestStep{
-		{
-			Config: r.appStackPowerShellCore(data, SkuBasicPlan, "7.2"),
-			Check: acceptance.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).Key("kind").HasValue("functionapp"),
-			),
-		},
-		data.ImportStep("site_credential.0.password"),
-	})
-}
-
-func TestAccWindowsFunctionApp_appStackPowerShellCore74(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_windows_function_app", "test")
-	r := WindowsFunctionAppResource{}
-
-	data.ResourceTest(t, r, []acceptance.TestStep{
-		{
-			Config: r.appStackPowerShellCore(data, SkuBasicPlan, "7.4"),
-			Check: acceptance.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).Key("kind").HasValue("functionapp"),
-			),
-		},
-		data.ImportStep("site_credential.0.password"),
-	})
-}
-
 func TestAccWindowsFunctionApp_appStackPowerShellCore76(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_windows_function_app", "test")
 	r := WindowsFunctionAppResource{}
@@ -1525,6 +1477,7 @@ func TestAccWindowsFunctionApp_appStackPowerShellCore76(t *testing.T) {
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("kind").HasValue("functionapp"),
+				check.That(data.ResourceName).Key("site_config.0.application_stack.0.powershell_core_version").HasValue("7.6"),
 			),
 		},
 		data.ImportStep("site_credential.0.password"),
@@ -2478,7 +2431,7 @@ resource "azurerm_windows_function_app" "test" {
   }
 
   enabled                     = false
-  functions_extension_version = "~3"
+  functions_extension_version = "~4"
   https_only                  = true
 
   identity {
@@ -2560,7 +2513,7 @@ resource "azurerm_windows_function_app" "test" {
     health_check_eviction_time_in_min = 7
 
     application_stack {
-      powershell_core_version = "7"
+      powershell_core_version = "7.6"
     }
 
     minimum_tls_version     = "1.1"
@@ -2671,7 +2624,7 @@ resource "azurerm_windows_function_app" "test" {
   }
 
   enabled                     = false
-  functions_extension_version = "~3"
+  functions_extension_version = "~4"
   https_only                  = true
 
   identity {
@@ -2688,7 +2641,7 @@ resource "azurerm_windows_function_app" "test" {
     application_insights_connection_string = azurerm_application_insights.test.connection_string
 
     application_stack {
-      powershell_core_version = "7"
+      powershell_core_version = "7.6"
     }
 
     default_documents = [
@@ -2832,7 +2785,7 @@ resource "azurerm_windows_function_app" "test" {
     application_insights_connection_string = azurerm_application_insights.test.connection_string
 
     application_stack {
-      powershell_core_version = "7"
+      powershell_core_version = "7.6"
     }
 
     elastic_instance_minimum = 5

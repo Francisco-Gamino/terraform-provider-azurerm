@@ -193,7 +193,9 @@ A `application_stack` block supports the following:
 
 * `python_version` - (Optional) The version of Python to run. Possible values are `3.14`, `3.13`, `3.12`, `3.11`, `3.10`, `3.9`, `3.8` and `3.7`.
 
-* `powershell_core_version` - (Optional) The version of PowerShell Core to run. Possible values are `7`, `7.2`, `7.4`, and `7.6`.
+* `powershell_core_version` - (Optional) The version of PowerShell Core to run. The possible value is `7.6`.
+
+~> **Note:** PowerShell `7.6` requires Azure Functions runtime version `4.x` and is not supported on Linux Consumption plans. Use a Premium or Dedicated plan, or migrate to the [Flex Consumption plan](function_app_flex_consumption.html), which does not support deployment slots or PowerShell Managed Dependencies.
 
 * `use_custom_runtime` - (Optional) Should the Linux Function App use a custom runtime?
 

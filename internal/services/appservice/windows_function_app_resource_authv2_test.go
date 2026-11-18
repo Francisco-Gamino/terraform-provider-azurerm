@@ -897,7 +897,7 @@ resource "azurerm_windows_function_app" "test" {
   }
 
   enabled                     = false
-  functions_extension_version = "~3"
+  functions_extension_version = "~4"
   https_only                  = true
 
   identity {
@@ -914,7 +914,7 @@ resource "azurerm_windows_function_app" "test" {
     application_insights_connection_string = azurerm_application_insights.test.connection_string
 
     application_stack {
-      powershell_core_version = "7"
+      powershell_core_version = "7.6"
     }
 
     default_documents = [

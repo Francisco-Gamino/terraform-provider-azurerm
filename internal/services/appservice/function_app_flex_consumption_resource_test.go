@@ -7,13 +7,18 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 )
 
@@ -27,6 +32,86 @@ func TestAccFunctionAppFlexConsumption_regressionTest(t *testing.T) {
 			Config: r.complete(data),
 		},
 	}, "")
+}
+
+func TestFunctionAppFlexConsumptionPowerShellRuntimeValidation(t *testing.T) {
+	resource := sdk.WrappedResource(appservice.FunctionAppFlexConsumptionResource{})
+	block := resource.CoreConfigSchema()
+	cases := []struct {
+		name            string
+		runtimeName     cty.Value
+		version         cty.Value
+		previousVersion string
+		wantError       bool
+	}{
+		{name: "7.6", runtimeName: cty.StringVal("powershell"), version: cty.StringVal("7.6")},
+		{name: "7", runtimeName: cty.StringVal("powershell"), version: cty.StringVal("7"), wantError: true},
+		{name: "7.0", runtimeName: cty.StringVal("powershell"), version: cty.StringVal("7.0"), wantError: true},
+		{name: "7.2", runtimeName: cty.StringVal("powershell"), version: cty.StringVal("7.2"), wantError: true},
+		{name: "7.4", runtimeName: cty.StringVal("powershell"), version: cty.StringVal("7.4"), wantError: true},
+		{name: "upgrade from 7.4", runtimeName: cty.StringVal("powershell"), version: cty.StringVal("7.6"), previousVersion: "7.4"},
+		{name: "existing 7.4", runtimeName: cty.StringVal("powershell"), version: cty.StringVal("7.4"), previousVersion: "7.4", wantError: true},
+		{name: "future version", runtimeName: cty.StringVal("powershell"), version: cty.StringVal("7.8")},
+		{name: "other runtime", runtimeName: cty.StringVal("node"), version: cty.StringVal("7.4")},
+		{name: "unknown runtime", runtimeName: cty.UnknownVal(cty.String), version: cty.StringVal("7.4")},
+		{name: "unknown version", runtimeName: cty.StringVal("powershell"), version: cty.UnknownVal(cty.String)},
+		{name: "unknown runtime with existing state", runtimeName: cty.UnknownVal(cty.String), version: cty.StringVal("7.4"), previousVersion: "7.4"},
+		{name: "unknown version with existing state", runtimeName: cty.StringVal("powershell"), version: cty.UnknownVal(cty.String), previousVersion: "7.4"},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			values := make(map[string]cty.Value)
+			for name, attributeType := range block.ImpliedType().AttributeTypes() {
+				values[name] = cty.NullVal(attributeType)
+			}
+			values["runtime_name"] = test.runtimeName
+			values["runtime_version"] = test.version
+
+			var state *terraform.InstanceState
+			if test.previousVersion != "" {
+				state = &terraform.InstanceState{
+					ID: "existing",
+					Attributes: map[string]string{
+						"runtime_name":    "powershell",
+						"runtime_version": test.previousVersion,
+					},
+				}
+			}
+			config := terraform.NewResourceConfigShimmed(cty.ObjectVal(values), block)
+			_, err := resource.Diff(context.Background(), state, config, &clients.Client{})
+			if (err != nil) != test.wantError {
+				t.Fatalf("want error %t, got %v", test.wantError, err)
+			}
+			if test.wantError && !strings.Contains(err.Error(), "no longer supported") {
+				t.Fatalf("unexpected validation error: %v", err)
+			}
+		})
+	}
+}
+
+func TestFunctionAppFlexConsumptionPowerShellRuntimeValidationOnApply(t *testing.T) {
+	resource := appservice.FunctionAppFlexConsumptionResource{}
+	operations := map[string]sdk.ResourceFunc{
+		"create": resource.Create(),
+		"update": resource.Update(),
+	}
+
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			metadata := sdk.NewResourceMetaData(nil, resource)
+			if err := metadata.ResourceData.Set("runtime_name", "powershell"); err != nil {
+				t.Fatal(err)
+			}
+			if err := metadata.ResourceData.Set("runtime_version", "7.4"); err != nil {
+				t.Fatal(err)
+			}
+			err := operation.Func(context.Background(), metadata)
+			if err == nil || !strings.Contains(err.Error(), "no longer supported") {
+				t.Fatalf("expected a retired runtime error, got %v", err)
+			}
+		})
+	}
 }
 
 func TestAccFunctionAppFlexConsumption_basic(t *testing.T) {
@@ -481,10 +566,11 @@ func TestAccFunctionAppFlexConsumption_runtimePowerShell(t *testing.T) {
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
-			Config: r.powerShell(data, "7.4"),
+			Config: r.powerShell(data, "7.6"),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("kind").HasValue("functionapp,linux"),
+				check.That(data.ResourceName).Key("runtime_version").HasValue("7.6"),
 			),
 		},
 		data.ImportStep("site_credential.0.password"),

@@ -22,6 +22,11 @@ const (
 	StorageStringFmtKV = "@Microsoft.KeyVault(SecretUri=%s)"
 )
 
+// PowerShell 7.0 (including "7"), 7.2, and 7.4 reached end of support on
+// 2022-12-03, 2024-11-08, and 2026-11-10, respectively.
+// https://learn.microsoft.com/en-us/powershell/scripting/install/powershell-support-lifecycle#powershell-end-of-support-dates
+var functionAppPowerShellCoreVersionValidation = validation.StringInSlice([]string{"7.6"}, false)
+
 type SiteConfigLinuxFunctionApp struct {
 	AlwaysOn                      bool                               `tfschema:"always_on"`
 	AppCommandLine                string                             `tfschema:"app_command_line"`
@@ -1301,7 +1306,7 @@ type ApplicationStackLinuxFunctionApp struct {
 	DotNetIsolated        bool                     `tfschema:"use_dotnet_isolated_runtime"` // Supported values `true` for `dotnet-isolated`, `false` otherwise
 	NodeVersion           string                   `tfschema:"node_version"`                // Supported values `12LTS`, `14LTS`, `16LTS`, `18LTS, `20LTS`, `22LTS`
 	PythonVersion         string                   `tfschema:"python_version"`              // Supported values `3.14`, `3.13`, `3.12`, `3.11`, `3.10`, `3.9`, `3.8`, `3.7`
-	PowerShellCoreVersion string                   `tfschema:"powershell_core_version"`     // Supported values are `7.0`, `7.2`, `7.4`, `7.6`
+	PowerShellCoreVersion string                   `tfschema:"powershell_core_version"`     // Supported value `7.6`
 	JavaVersion           string                   `tfschema:"java_version"`                // Supported values `8`, `11`, `17`, `21`, `25`
 	CustomHandler         bool                     `tfschema:"use_custom_runtime"`          // Supported values `true`
 	Docker                []ApplicationStackDocker `tfschema:"docker"`                      // Needs ElasticPremium or Basic (B1) Standard (S 1-3) or Premium(PxV2 or PxV3) LINUX Service Plan
@@ -1312,7 +1317,7 @@ type ApplicationStackWindowsFunctionApp struct {
 	DotNetIsolated        bool   `tfschema:"use_dotnet_isolated_runtime"` // Supported values `true` for `dotnet-isolated`, `false` otherwise
 	NodeVersion           string `tfschema:"node_version"`                // Supported values `12LTS`, `14LTS`, `16LTS`, `18LTS, `20LTS`, `22LTS`, `24LTS`
 	JavaVersion           string `tfschema:"java_version"`                // Supported values `8`, `11`, `17`, `21`, `25`
-	PowerShellCoreVersion string `tfschema:"powershell_core_version"`     // Supported values are `7.0`, `7.2`, `7.4`, `7.6`
+	PowerShellCoreVersion string `tfschema:"powershell_core_version"`     // Supported value `7.6`
 	CustomHandler         bool   `tfschema:"use_custom_runtime"`          // Supported values `true`
 }
 
@@ -1420,14 +1425,9 @@ func linuxFunctionAppStackSchema() *pluginsdk.Schema {
 				},
 
 				"powershell_core_version": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					ValidateFunc: validation.StringInSlice([]string{
-						"7",   // Deprecated / not available in the portal
-						"7.2", // preview LTS Support
-						"7.4", // current LTS Support
-						"7.6",
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					ValidateFunc: functionAppPowerShellCoreVersionValidation,
 					ExactlyOneOf: []string{
 						"site_config.0.application_stack.0.dotnet_version",
 						"site_config.0.application_stack.0.python_version",
@@ -1437,7 +1437,7 @@ func linuxFunctionAppStackSchema() *pluginsdk.Schema {
 						"site_config.0.application_stack.0.docker",
 						"site_config.0.application_stack.0.use_custom_runtime",
 					},
-					Description: "The version of PowerShell Core to use. Possibles values are `7`, `7.2`, and `7.4`",
+					Description: "The version of PowerShell Core to use. The possible value is `7.6`.",
 				},
 
 				"java_version": {
@@ -1700,14 +1700,9 @@ func windowsFunctionAppStackSchema() *pluginsdk.Schema {
 				},
 
 				"powershell_core_version": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					ValidateFunc: validation.StringInSlice([]string{
-						"7",   // Deprecated / not available in the portal
-						"7.2", // Deprecated
-						"7.4", // Deprecated
-						"7.6", // current LTS Support
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					ValidateFunc: functionAppPowerShellCoreVersionValidation,
 					ExactlyOneOf: []string{
 						"site_config.0.application_stack.0.dotnet_version",
 						"site_config.0.application_stack.0.java_version",
@@ -1715,7 +1710,7 @@ func windowsFunctionAppStackSchema() *pluginsdk.Schema {
 						"site_config.0.application_stack.0.powershell_core_version",
 						"site_config.0.application_stack.0.use_custom_runtime",
 					},
-					Description: "The PowerShell Core version to use. Possible values are `7`, `7.2`, `7.4`, and `7.6`",
+					Description: "The PowerShell Core version to use. The possible value is `7.6`.",
 				},
 
 				"use_custom_runtime": {

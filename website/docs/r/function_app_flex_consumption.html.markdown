@@ -85,7 +85,9 @@ The following arguments are supported:
 
 * `runtime_name` - (Required) The Runtime of the Linux Function App. Possible values are `node`, `dotnet-isolated`, `powershell`, `python`, `java` and `custom`.
 
-* `runtime_version` - (Required) The Runtime version of the Linux Function App. Accepted values varies with the value of `runtime_name`.
+* `runtime_version` - (Required) The runtime version of the Linux Function App. Accepted values vary with `runtime_name`. For PowerShell, versions `7` (`7.0`), `7.2`, and `7.4` have reached end of support and are not accepted. Use `7.6` or another version supported by Azure Functions.
+
+~> **Note:** PowerShell Managed Dependencies are not supported on Flex Consumption plans. Bundle required modules with the function app instead. See [Dependency management](https://learn.microsoft.com/azure/azure-functions/functions-reference-powershell#dependency-management).
 
 ~> **Note:** To get the most up-to-date list of supported versions, use command `az functionapp list-runtimes` or visit [Supported languages in Azure Functions](https://learn.microsoft.com/azure/azure-functions/supported-languages)
 

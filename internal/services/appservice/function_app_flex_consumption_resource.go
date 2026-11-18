@@ -86,7 +86,10 @@ type FunctionAppAlwaysReady struct {
 	InstanceCount int64  `tfschema:"instance_count"`
 }
 
-var _ sdk.ResourceWithUpdate = FunctionAppFlexConsumptionResource{}
+var (
+	_ sdk.ResourceWithUpdate        = FunctionAppFlexConsumptionResource{}
+	_ sdk.ResourceWithCustomizeDiff = FunctionAppFlexConsumptionResource{}
+)
 
 func (r FunctionAppFlexConsumptionResource) ModelObject() any {
 	return &FunctionAppFlexConsumptionModel{}
@@ -345,10 +348,43 @@ func (r FunctionAppFlexConsumptionResource) Attributes() map[string]*pluginsdk.S
 	}
 }
 
+func (r FunctionAppFlexConsumptionResource) CustomizeDiff() sdk.ResourceFunc {
+	return sdk.ResourceFunc{
+		Timeout: 5 * time.Minute,
+		Func: func(_ context.Context, metadata sdk.ResourceMetaData) error {
+			diff := metadata.ResourceDiff
+			if !diff.NewValueKnown("runtime_name") || !diff.NewValueKnown("runtime_version") {
+				return nil
+			}
+
+			return validateFlexConsumptionRuntime(diff.Get("runtime_name").(string), diff.Get("runtime_version").(string))
+		},
+	}
+}
+
+func validateFlexConsumptionRuntime(runtimeName, runtimeVersion string) error {
+	if runtimeName == string(webapps.RuntimeNamePowershell) {
+		switch runtimeVersion {
+		case "7", "7.0", "7.2", "7.4":
+			return fmt.Errorf("`runtime_version` %q is no longer supported for `runtime_name` %q; use PowerShell 7.6 or another supported version", runtimeVersion, runtimeName)
+		}
+	}
+
+	return nil
+}
+
 func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
+			var functionAppFlexConsumption FunctionAppFlexConsumptionModel
+			if err := metadata.Decode(&functionAppFlexConsumption); err != nil {
+				return err
+			}
+			if err := validateFlexConsumptionRuntime(functionAppFlexConsumption.RuntimeName, functionAppFlexConsumption.RuntimeVersion); err != nil {
+				return err
+			}
+
 			client := metadata.Client.AppService.WebAppsClient
 			resourcesClient := metadata.Client.AppService.ResourceProvidersClient
 			servicePlanClient := metadata.Client.AppService.ServicePlanClient
@@ -357,11 +393,6 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 			storageDomainSuffix, ok := metadata.Client.Account.Environment.Storage.DomainSuffix()
 			if !ok {
 				return fmt.Errorf("could not determine Storage domain suffix for environment %q", metadata.Client.Account.Environment.Name)
-			}
-
-			var functionAppFlexConsumption FunctionAppFlexConsumptionModel
-			if err := metadata.Decode(&functionAppFlexConsumption); err != nil {
-				return err
 			}
 
 			id := commonids.NewAppServiceID(subscriptionId, functionAppFlexConsumption.ResourceGroup, functionAppFlexConsumption.Name)
@@ -772,6 +803,14 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
+			var state FunctionAppFlexConsumptionModel
+			if err := metadata.Decode(&state); err != nil {
+				return fmt.Errorf("decoding: %+v", err)
+			}
+			if err := validateFlexConsumptionRuntime(state.RuntimeName, state.RuntimeVersion); err != nil {
+				return err
+			}
+
 			storageDomainSuffix, ok := metadata.Client.Account.Environment.Storage.DomainSuffix()
 			if !ok {
 				return fmt.Errorf("could not determine Storage domain suffix for environment %q", metadata.Client.Account.Environment.Name)
@@ -781,11 +820,6 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			id, err := commonids.ParseFunctionAppID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
-			}
-
-			var state FunctionAppFlexConsumptionModel
-			if err := metadata.Decode(&state); err != nil {
-				return fmt.Errorf("decoding: %+v", err)
 			}
 
 			existing, err := client.Get(ctx, *id)
